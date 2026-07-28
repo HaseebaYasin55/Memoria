@@ -191,6 +191,12 @@ Manual test cases used to verify the memory layer behaves as described:
 
 ---
 
+# Live Demo
+ 
+You can try the deployed application here: [🤖 Memoria](https://memoria-11.streamlit.app/)
+
+---
+
 # Notes & Limitations
 
 - Requires a valid `GROQ_API_KEY` at all times (used for both chat replies and local fact extraction); the app raises a clear error if it's missing.

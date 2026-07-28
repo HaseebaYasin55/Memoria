@@ -76,7 +76,6 @@ class _LocalSetup:
                 "config": {
                     "collection_name": COLLECTION,
                     "path": DATA_DIR,
-                    "embedding_model_dims": EMBEDDER_DIMS,
                 },
             },
             "llm": {

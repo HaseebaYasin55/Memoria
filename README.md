@@ -27,6 +27,7 @@ mem-bot/
 ├── chat_engine.py
 ├── memory_engine.py
 ├── requirements.txt
+├── memory_store
 ├── .gitignore
 └── README.md
 ```

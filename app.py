@@ -22,7 +22,7 @@ from memory_engine import MemoryEngine
 
 load_dotenv()
 
-st.set_page_config(page_title="Memoria", page_icon="🧩", layout="centered")
+st.set_page_config(page_title="Memoria", page_icon="🤖", layout="centered")
 
 st.markdown(
     """
@@ -37,16 +37,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
 @st.cache_resource
 def _memory() -> MemoryEngine:
     return MemoryEngine()
 
-
 @st.cache_resource
 def _chat() -> ChatEngine:
     return ChatEngine()
-
 
 memory = _memory()
 chat = _chat()
@@ -56,17 +53,26 @@ if "history" not in st.session_state:
 if "user_id" not in st.session_state:
     st.session_state.user_id = "guest"
 
-# ---------------------------------------------------------------- sidebar
+##sidebar
 with st.sidebar:
-    st.header("Memoria 🧩")
-    st.caption("Tell it something once — it remembers, even after a restart.")
+    st.markdown(
+    """
+    <div style="text-align: center; padding-bottom: 20px;">
+        <h1 style="margin-bottom: 5px;">🤖 Memoria</h1>
+        <p style="color: gray; font-size: 18px;">
+            Tell it something once — it remembers, even after a restart..
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
     st.session_state.user_id = st.text_input(
-        "Your user ID",
+        "Your User-ID",
         value=st.session_state.user_id,
         help="Each ID keeps a completely separate set of memories.",
     )
-    active_user = st.session_state.user_id.strip() or "guest"
+    active_user = st.session_state.user_id.strip() or "Guest"
 
     st.divider()
     st.subheader("What's remembered")
@@ -86,12 +92,12 @@ with st.sidebar:
             st.session_state.history = []
             st.rerun()
     with right:
-        if st.button("Clear memory", use_container_width=True, help="Permanently deletes stored facts for this user ID."):
+        if st.button("Clear mem", use_container_width=True, help="Permanently deletes stored facts for this user ID."):
             memory.forget_everything(active_user)
             st.rerun()
 
-# ------------------------------------------------------------------ main
-st.title("🧩 Memoria")
+##main
+st.title("Memoria")
 st.caption("A small chatbot that keeps long-term facts about you across sessions.")
 
 for turn in st.session_state.history:
@@ -121,4 +127,4 @@ if user_message:
 
     st.session_state.history.append({"role": "assistant", "content": answer})
     memory.remember(user_message, active_user)
-    st.rerun()  # refresh the sidebar's fact list with anything new just saved
+    st.rerun()  

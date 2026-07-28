@@ -1,54 +1,8 @@
-
-"""
-memory_engine.py (Mem-Bot)
-==========================
-Owns everything related to long-term memory. The rest of the app only
-calls the small set of methods on MemoryEngine -- never Mem0 directly,
-so the underlying client can be swapped without touching the UI.
-
-Two backends, picked automatically:
-
-  * Mem0 Platform (cloud)  -- when MEM0_API_KEY starts with "m0-".
-    Facts are stored at https://app.mem0.ai and survive any local
-    delete / re-install.
-
-  * Fully local             -- the default. Chroma writes to ./memory_store/,
-    a HuggingFace sentence-transformer embeds the facts, and Groq is
-    used as the cheap "fact extraction" LLM. Nothing else needed besides
-    GROQ_API_KEY.
-
-Why the original "doesn't remember across chats" bug happened
--------------------------------------------------------------
-The previous version of this file put `user_id` inside
-`filters={"user_id": user_id}` for *every* call. On mem0ai>=1.0.0 the
-cloud client only honors `user_id` as a *top-level* parameter, so
-`search()`, `get_all()` and `delete_all()` silently returned nothing.
-That meant:
-
-  - "What's remembered" in the sidebar was always empty
-  - No facts were ever folded into the system prompt, so the chat reply
-    had zero memory of past conversations
-  - `add()` was called with a bare string instead of a role-tagged
-    message list, so even WRITE attempts saved the raw message rather
-    than an extracted fact
-
-This rewrite:
-  - passes `user_id` as a top-level kwarg (the canonical API shape)
-  - ships role-tagged `[{"role": "user", "content": ...}]` to `add()`
-  - keeps the `filters=` form as a fallback for older mem0ai versions
-
-(Note: `embedding_model_dims` on the local Chroma config is NOT
-needed -- mem0ai infers the dim from the chosen embedder, and on 2.x
-the ChromaDbConfig schema rejects unknown keys outright.)
-"""
-
 from __future__ import annotations
-
 import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Iterable
-
 from mem0 import Memory, MemoryClient
 
 log = logging.getLogger("memoria.memory_engine")
@@ -65,12 +19,9 @@ DATA_DIR = os.path.join(
     "memory_store",
 )
 COLLECTION = "memoria_facts"
+EXTRACTION_MODEL = "openai/gpt-oss-20b"    #for fact extraction
 
-# Small, fast Groq model used only for fact extraction (not chat).
-EXTRACTION_MODEL = "openai/gpt-oss-20b"
-
-# Embedder name -- must match across saves/recalls so mem0ai
-# embeds new and existing facts with the same model.
+##embeds new and existing facts with the same model.
 EMBEDDER_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
@@ -103,10 +54,6 @@ class _LocalSetup:
             },
         }
 
-
-# Tiny greetings / acks that carry no personal info. These get filtered
-# BEFORE hitting Mem0 so a flood of "ok / thanks" messages doesn't bloat
-# the fact database.
 _LOW_SIGNAL = {
     "hi", "hello", "hey", "yo", "sup",
     "ok", "okay", "k", "cool", "nice", "great", "thanks", "thank you",
@@ -122,10 +69,6 @@ def is_low_signal(message: str) -> bool:
 
 
 class MemoryEngine:
-    """Thin uniform wrapper around Mem0 cloud + local clients."""
-
-    # ---------------------------------------------------------- init
-
     def __init__(self) -> None:
         cloud = self._cloud_key()
         if cloud:
@@ -156,8 +99,6 @@ class MemoryEngine:
     def backend(self) -> str:
         return self._backend
 
-    # ---------------------------------------------------------- write
-
     def remember(self, message: str, user_id: str) -> bool:
         """Hand a raw user message to Mem0 for fact extraction/merging.
 
@@ -166,9 +107,6 @@ class MemoryEngine:
         if not (user_id and user_id.strip()) or is_low_signal(message):
             return False
         try:
-            # FIX: pass a role-tagged message list -- the canonical
-            # shape mem0ai>=1.0.0 expects. The old bare-string form
-            # saved the raw text, not an extracted fact.
             self._client.add(
                 messages=[{"role": "user", "content": message}],
                 user_id=user_id,
@@ -179,8 +117,6 @@ class MemoryEngine:
         except Exception:
             log.exception("remember() failed for user=%s", user_id)
             return False
-
-    # ---------------------------------------------------------- read
 
     def recall(self, query: str, user_id: str, top_k: int = 5) -> list[str]:
         """Semantic search: facts relevant to `query`, meaning-based."""
@@ -195,7 +131,6 @@ class MemoryEngine:
             )
             return _unpack(result)
         except TypeError:
-            # Fallback for older mem0ai that only takes `filters`.
             try:
                 result = self._client.search(
                     query=query,
@@ -242,8 +177,6 @@ class MemoryEngine:
         except Exception:
             log.exception("forget_everything() failed for user=%s", user_id)
 
-    # ---------------------------------------------------------- diag
-
     def health_check(self, user_id: str = "__healthcheck__") -> dict:
         """Tiny round-trip probe: writes a marker fact, reads it back.
 
@@ -273,9 +206,6 @@ class MemoryEngine:
         except Exception as exc:  # pragma: no cover - diagnostic
             report["error"] = str(exc)
         return report
-
-
-# ---------------------------------------------------------- helpers
 
 
 def _unpack(result: Any) -> list[str]:

@@ -1,14 +1,3 @@
-"""
-chat_engine.py
-==============
-Everything related to actually talking to the language model. The UI
-only calls `reply()` and gets a string back -- it doesn't know or care
-that this is a Groq call under the hood.
-
-Model: openai/gpt-oss-120b on Groq's free tier. Fast, good instruction
-following, no OpenAI key required anywhere in this project.
-"""
-
 from __future__ import annotations
 
 import os

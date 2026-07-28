@@ -97,7 +97,7 @@ with st.sidebar:
             st.rerun()
 
 ##main
-st.title("Memoria")
+st.title("🤖 Memoria")
 st.caption("A small chatbot that keeps long-term facts about you across sessions.")
 
 for turn in st.session_state.history:
